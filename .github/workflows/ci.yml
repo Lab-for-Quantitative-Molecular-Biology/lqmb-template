@@ -1,0 +1,73 @@
+name: LQMB template checks
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  structure:
+    name: Check repository structure and protected-file hygiene
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Check required files and directories
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          required_files=(
+            README.md
+            CLAUDE.md
+            AI_PROVENANCE.md
+            LICENSE
+            CHANGELOG.md
+            TEMPLATE_VERSION
+            .gitignore
+            docs/research-question.md
+            docs/research-log.md
+            docs/decisions.md
+            docs/analysis-plan.md
+            docs/methods.md
+            docs/literature.md
+            docs/contributions.md
+            data/README.md
+            examples/README.md
+            outputs/README.md
+          )
+
+          for file in "${required_files[@]}"; do
+            test -f "$file" || { echo "Missing required file: $file"; exit 1; }
+          done
+
+          required_dirs=(src tests scripts workflows configs notebooks manuscript .github/ISSUE_TEMPLATE)
+          for dir in "${required_dirs[@]}"; do
+            test -d "$dir" || { echo "Missing required directory: $dir"; exit 1; }
+          done
+
+      - name: Check data directories contain no tracked files beyond documentation
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          tracked_data=$(git ls-files 'data/*' ':!data/README.md' ':!data/.gitkeep' || true)
+          if [ -n "$tracked_data" ]; then
+            echo "ERROR: research data directory contains tracked files that are not explicitly allowed."
+            printf '%s\n' "$tracked_data"
+            exit 1
+          fi
+
+      - name: Check common secret patterns in tracked files
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if git grep -n -I -E 'AKIA[0-9A-Z]{16}|-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----|ghp_[A-Za-z0-9_]{30,}|github_pat_[A-Za-z0-9_]{20,}' -- . ':!AI_PROVENANCE.md'; then
+            echo "ERROR: possible credential or private-key pattern detected."
+            exit 1
+          fi

@@ -1,0 +1,23 @@
+name: Problem / unexpected result
+description: Report a reproducibility issue, bug, unexpected analysis result, or other problem.
+title: "[Problem] "
+labels:
+  - problem
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: Describe what happened and what you expected.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: Steps, commands, environment information, or a minimal example.
+  - type: textarea
+    id: impact
+    attributes:
+      label: Scientific / project impact
+      description: What analyses or conclusions may be affected?

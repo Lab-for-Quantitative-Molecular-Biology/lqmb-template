@@ -1,0 +1,32 @@
+name: Research question
+description: Propose or refine a scientific question or hypothesis.
+title: "[Question] "
+labels:
+  - research-question
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this template for a scientific question, hypothesis, or proposed direction.
+  - type: textarea
+    id: question
+    attributes:
+      label: Question
+      description: State the scientific question as clearly as possible.
+    validations:
+      required: true
+  - type: textarea
+    id: rationale
+    attributes:
+      label: Rationale
+      description: Why does this question matter, and what motivated it?
+  - type: textarea
+    id: predictions
+    attributes:
+      label: Predictions
+      description: What observations or results would support or challenge the hypothesis?
+  - type: textarea
+    id: next-steps
+    attributes:
+      label: Possible next steps
+      description: Suggested analyses, experiments, modelling, or discussion.

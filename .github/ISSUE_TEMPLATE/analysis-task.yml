@@ -1,0 +1,28 @@
+name: Analysis / computational task
+description: Define an analysis, modelling, software, or reproducibility task.
+title: "[Task] "
+labels:
+  - analysis
+body:
+  - type: textarea
+    id: objective
+    attributes:
+      label: Objective
+      description: What needs to be achieved?
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Relevant scientific or technical background.
+  - type: textarea
+    id: inputs
+    attributes:
+      label: Inputs and constraints
+      description: Data, assumptions, dependencies, or constraints.
+  - type: textarea
+    id: validation
+    attributes:
+      label: Validation / definition of done
+      description: How will we know the task is complete and correct?
