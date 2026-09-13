@@ -1,0 +1,1 @@
+# lqmb-template
