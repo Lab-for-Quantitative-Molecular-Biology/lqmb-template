@@ -1,0 +1,37 @@
+{
+  "schema_version": "0.2",
+  "template_version": "0.2.0",
+  "managed_paths": [
+    "CLAUDE.md",
+    "AI_PROVENANCE.md",
+    "CONTRIBUTING.md",
+    "TEMPLATE_VERSION",
+    ".gitignore",
+    ".github/pull_request_template.md",
+    ".github/ISSUE_TEMPLATE/",
+    ".github/workflows/ci.yml",
+    ".lqmb/",
+    "docs/lqmb/"
+  ],
+  "protected_paths": [
+    "src/",
+    "tests/",
+    "scripts/",
+    "workflows/",
+    "configs/",
+    "notebooks/",
+    "data/",
+    "outputs/",
+    "examples/",
+    "manuscript/",
+    "docs/research-question.md",
+    "docs/research-log.md",
+    "docs/decisions.md",
+    "docs/analysis-plan.md",
+    "docs/methods.md",
+    "docs/literature.md",
+    "docs/contributions.md",
+    "README.md"
+  ],
+  "shared_paths": []
+}
