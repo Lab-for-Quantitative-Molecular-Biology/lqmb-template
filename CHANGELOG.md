@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.2.2 — patch release
+
+### Fixed
+
+- Fixed a CI bug where the "Validate template self metadata" step in `.github/workflows/ci.yml` unconditionally asserted the *template's own* self-referential invariants (`project.type == "lqmb-template"`, `template.commit == "self"`, a top-level `release` key), even though `.github/workflows/ci.yml` is a template-managed path shipped verbatim to every downstream project. Every downstream project's `.lqmb/project.json` has a different, equally legitimate shape (a real adopted `template.version`/`commit`, no `release` key), so this step failed on every downstream repository that adopted v0.2.1.
+- The validation now branches on `project.project.type`: `"lqmb-template"` keeps the self-referential checks; any other type validates downstream invariants instead (real non-`"self"` `template.version`/`commit`, `manifest.template_version` matching `TEMPLATE_VERSION`, no `release` key required).
+- Corrected `README.md`'s "This template is **v0.2.0**." version line, which had already fallen one release behind at the v0.2.1 tag.
+
+### CI
+
+- Extracted the metadata-validation logic from an inline CI heredoc into `.lqmb/bin/validate_metadata.py` (already a template-managed path) so it is testable and shared between the template and downstream projects that adopt this release.
+- Added `tests/test_validate_metadata.py`, covering both template-shaped and a synthetic downstream-shaped `project.json`/`manifest.json`, including regression cases for the bug above.
+- Added a CI step running these regression tests.
+
 ## 0.2.1 — patch release
 
 ### Fixed
