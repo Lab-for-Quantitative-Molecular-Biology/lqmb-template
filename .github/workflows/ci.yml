@@ -9,38 +9,35 @@ permissions:
 
 jobs:
   structure:
-    name: Check repository structure and protected-file hygiene
+    name: Validate LQMB structure and protected-file hygiene
     runs-on: ubuntu-latest
 
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Check required files and directories
+      - name: Check required framework files
         shell: bash
         run: |
           set -euo pipefail
-
           required_files=(
             README.md
             CLAUDE.md
             AI_PROVENANCE.md
+            CONTRIBUTING.md
             LICENSE
             CHANGELOG.md
             TEMPLATE_VERSION
             .gitignore
-            docs/research-question.md
-            docs/research-log.md
-            docs/decisions.md
-            docs/analysis-plan.md
-            docs/methods.md
-            docs/literature.md
-            docs/contributions.md
-            data/README.md
-            examples/README.md
-            outputs/README.md
+            .lqmb/project.json
+            .lqmb/dependencies.json
+            .lqmb/manifest.json
+            .lqmb/README.md
+            .lqmb/bin/template-status.py
+            docs/lqmb/LQMB_LIVING_PROJECT_FRAMEWORK.md
+            docs/lqmb/TEMPLATE_UPDATE_PROTOCOL.md
+            docs/lqmb/V0.2_MIGRATION_FROM_V0.1.md
           )
-
           for file in "${required_files[@]}"; do
             test -f "$file" || { echo "Missing required file: $file"; exit 1; }
           done
@@ -50,24 +47,45 @@ jobs:
             test -d "$dir" || { echo "Missing required directory: $dir"; exit 1; }
           done
 
-      - name: Check data directories contain no tracked files beyond documentation
+      - name: Validate JSON metadata
         shell: bash
         run: |
           set -euo pipefail
+          python3 -m json.tool .lqmb/project.json >/dev/null
+          python3 -m json.tool .lqmb/dependencies.json >/dev/null
+          python3 -m json.tool .lqmb/manifest.json >/dev/null
 
+      - name: Check template version
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(tr -d '\r\n' < TEMPLATE_VERSION)" = "0.2.0"
+          python3 - <<'PY'
+          import json
+          data=json.load(open('.lqmb/manifest.json'))
+          assert data['template_version'] == '0.2.0'
+          print('Template version metadata is consistent.')
+          PY
+
+      - name: Check data directories contain no tracked research files
+        shell: bash
+        run: |
+          set -euo pipefail
           tracked_data=$(git ls-files 'data/*' ':!data/README.md' ':!data/.gitkeep' || true)
           if [ -n "$tracked_data" ]; then
-            echo "ERROR: research data directory contains tracked files that are not explicitly allowed."
+            echo "ERROR: tracked files found under data/ beyond documentation placeholders."
             printf '%s\n' "$tracked_data"
             exit 1
           fi
 
-      - name: Check common secret patterns in tracked files
+      - name: Check for common credential patterns
         shell: bash
         run: |
           set -euo pipefail
-
           if git grep -n -I -E 'AKIA[0-9A-Z]{16}|-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----|ghp_[A-Za-z0-9_]{30,}|github_pat_[A-Za-z0-9_]{20,}' -- . ':!AI_PROVENANCE.md'; then
             echo "ERROR: possible credential or private-key pattern detected."
             exit 1
           fi
+
+      - name: Check whitespace
+        run: git diff --check

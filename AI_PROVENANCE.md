@@ -1,35 +1,28 @@
-# AI provenance and authorship
+# LQMB AI Provenance
 
-LQMB projects distinguish **AI assistance** from **human authorship and scientific responsibility**.
+LQMB distinguishes human scientific authorship from AI assistance.
 
-Claude and other AI systems may assist with code, analysis, tests, documentation, literature organisation, or other project work. Human contributors remain responsible for understanding, reviewing, testing, and approving material incorporated into the repository.
+## Required commit provenance
 
-## Commit provenance
-
-When an AI system materially contributes to a commit, record this using Git trailers at the end of the commit message.
-
-For Claude-generated code:
+For material Claude contribution, use actual Git commit trailers:
 
 ```text
 AI-Assisted: Claude
 AI-Role: Generated
-Human-Reviewer: <name>
 ```
 
-For Claude modifying human-written code:
+or:
 
 ```text
 AI-Assisted: Claude
 AI-Role: Modified
-Human-Reviewer: <name>
 ```
 
-For Claude providing substantial assistance without generating the final implementation:
+or:
 
 ```text
 AI-Assisted: Claude
 AI-Role: Assisted
-Human-Reviewer: <name>
 ```
 
 For work without material AI assistance:
@@ -38,25 +31,39 @@ For work without material AI assistance:
 AI-Assisted: None
 ```
 
-The `Human-Reviewer` identifies the person who reviewed and accepted the material for incorporation. The reviewer may be the contributor when appropriate.
+After a human has actually reviewed the change, add:
+
+```text
+Human-Reviewer: <name>
+```
+
+A `Human-Reviewer` trailer must never be added merely because Claude expects a human to review later.
 
 ## Pull requests
 
-Pull requests should disclose whether AI materially contributed and briefly describe the contribution. Use the repository pull-request template.
+Pull requests should state:
 
-## What this does not mean
+- whether Claude materially contributed;
+- what Claude contributed;
+- what the human contributor reviewed;
+- what tests or validation were performed.
 
-AI provenance is not authorship. It does not make an AI system a scientific author or contributor of record unless a publisher, funder, institution, or other governing body explicitly requires a different disclosure.
+The PR record supplements, but does not replace, commit-level provenance.
 
-Scientific authorship and contributorship are determined by human contribution and the applicable project, institutional, journal, and funder policies.
+## Authorship
+
+AI assistance is not scientific authorship. Human contributors remain responsible for the scientific content they approve.
+
+## Conventional AI attribution
+
+Claude Code or Git tooling may also add:
+
+```text
+Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
+```
+
+This is supplementary to the LQMB provenance fields.
 
 ## Line-level attribution
 
-LQMB does not attempt to label individual source-code lines as human-written or AI-written. Final code is often jointly developed, edited, refactored, and reviewed, making durable line-level attribution unreliable.
-
-The authoritative provenance record is therefore the combination of:
-
-1. Git commit metadata and trailers;
-2. pull-request disclosure and review;
-3. the project's contributor record; and
-4. applicable publication or release disclosures.
+LQMB does not attempt to permanently classify individual lines of source code as AI-written or human-written. The durable provenance record is maintained at the commit and pull-request level, together with human review.

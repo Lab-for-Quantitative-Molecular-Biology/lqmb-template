@@ -1,0 +1,14 @@
+{
+  "schema_version": "0.2",
+  "project": {
+    "name": "lqmb-template",
+    "type": "lqmb-template"
+  },
+  "template": {
+    "repository": "https://github.com/Laboratory-for-Quantitative-Molecular-Biology/lqmb-template",
+    "version": "0.2.0",
+    "commit": null,
+    "sync_policy": "prompt"
+  },
+  "dependencies_file": ".lqmb/dependencies.json"
+}
