@@ -35,6 +35,7 @@ jobs:
             .lqmb/manifest.json
             .lqmb/README.md
             .lqmb/bin/template-status.py
+            .lqmb/tests/test_validate_metadata.py
             docs/lqmb/LQMB_LIVING_PROJECT_FRAMEWORK.md
             docs/lqmb/TEMPLATE_UPDATE_PROTOCOL.md
             docs/lqmb/DEPENDENCY_UPDATE_PROTOCOL.md
@@ -74,7 +75,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          test "$(tr -d '\r\n' < TEMPLATE_VERSION)" = "0.2.2"
+          test "$(tr -d '\r\n' < TEMPLATE_VERSION)" = "0.2.3"
 
           python3 .lqmb/bin/validate_metadata.py
 
@@ -82,7 +83,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python3 -m unittest tests/test_validate_metadata.py -v
+          python3 .lqmb/tests/test_validate_metadata.py -v
 
       - name: Check for tracked macOS metadata and archive artefacts
         shell: bash

@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.2.3 — patch release
+
+### Fixed
+
+- Relocated the metadata-validation regression tests from `tests/test_validate_metadata.py` to `.lqmb/tests/test_validate_metadata.py`. `tests/` is a `protected_path` — project-owned and never synced from the template — yet the v0.2.2 fix added the CI step `python3 -m unittest tests/test_validate_metadata.py -v` to the template-managed `.github/workflows/ci.yml`, so any downstream project adopting v0.2.2 verbatim would get a CI step referencing a test file the sync process has no mandate to provide, breaking CI again for a new reason.
+- `.lqmb/tests/` is now a declared `template_managed_path` in `.lqmb/manifest.json`, so the regression tests travel with `.lqmb/bin/validate_metadata.py` and `.github/workflows/ci.yml` as one consistent, adoptable unit.
+
+### CI
+
+- `.github/workflows/ci.yml`'s "Validate template self metadata" step now checks `TEMPLATE_VERSION` against `0.2.3` and its regression-test step runs `.lqmb/tests/test_validate_metadata.py` directly as a script (`python3 .lqmb/tests/test_validate_metadata.py -v`) rather than via `python3 -m unittest <path>`: unittest's module loader converts the path to a dotted module name, and the leading `.lqmb` component (a dot-prefixed directory) produces an invalid empty module name.
+- Added `.lqmb/tests/test_validate_metadata.py` to the required-files check, mirroring the existing entry for `.lqmb/bin/template-status.py`.
+
 ## 0.2.2 — patch release
 
 ### Fixed
