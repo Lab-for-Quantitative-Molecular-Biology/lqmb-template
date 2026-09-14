@@ -48,4 +48,4 @@ See:
 
 ## Version
 
-This template is **v0.2.2**.
+This template is **v0.2.3**.

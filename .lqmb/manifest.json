@@ -1,6 +1,6 @@
 {
   "schema_version": "0.2",
-  "template_version": "0.2.2",
+  "template_version": "0.2.3",
   "template_managed_paths": [
     "CLAUDE.md",
     "AI_PROVENANCE.md",
@@ -13,6 +13,7 @@
     ".lqmb/manifest.json",
     ".lqmb/README.md",
     ".lqmb/bin/",
+    ".lqmb/tests/",
     "docs/lqmb/"
   ],
   "project_configured_paths": [
