@@ -1,29 +1,36 @@
 # Changelog
 
-## 0.2.0 — 2026-09-14
+## 0.2.1 — patch release
 
-### Added
+### Fixed
 
-- `.lqmb/project.json` for explicit project identity and exact template provenance.
-- `.lqmb/dependencies.json` for versioned research/software/publication dependencies and living citations.
-- `.lqmb/manifest.json` defining template-managed, protected and future shared paths.
-- Human-readable LQMB Living Project Framework documentation.
-- Explicit Template Update Protocol.
-- Local metadata inspection script for first-interaction checks.
+- Corrected the canonical LQMB GitHub organisation URL to `Lab-for-Quantitative-Molecular-Biology`.
+- Corrected the template repository's self-referential metadata so it does not pin itself to a downstream release.
+- Fixed invalid JSON in `.lqmb/project.json`.
+- Clarified the distinction between template-managed and project-configured `.lqmb` paths.
+- Added read-only upstream release checking to `template-status.py`.
+- Added explicit dependency/update protocol guidance.
+- Strengthened Claude instructions so commits, pushes and pull requests require explicit human authorisation.
+- Clarified that `Human-Reviewer` may only be recorded after actual human review.
 
-### Changed
+### CI
 
-- `CLAUDE.md` now requires first-interaction template/dependency checks and human approval before updates.
-- `CLAUDE.md` clarifies that `data/` is not a default raw-data store.
-- AI provenance now requires structured Git trailers and forbids claiming human review before it occurs.
-- Template updates are defined as ordinary, reviewable project changes rather than silent synchronisation.
-- `CONTRIBUTING.md` now describes template-update and AI-provenance workflows.
-- CI and repository hygiene are aligned with the living-project metadata.
+- Updated `actions/checkout` to `v7`, which uses the current Node 24 runtime. GitHub's checkout release history documents the Node 24 migration in the newer releases.
+- Added validation that template self-metadata are internally consistent.
+- Added validation for required `.lqmb` files.
+- Added detection of tracked `.DS_Store` and `__MACOSX` artefacts.
+- Improved JSON metadata validation.
+- Added validation of the read-only template-status tool.
 
-### Important compatibility note
+## 0.2.0
 
-Version 0.2 is a framework update from v0.1. Existing projects should migrate deliberately using the supplied migration guide. Do not replace an existing project by copying the v0.2 template over it.
+- Added explicit AI provenance policy and pull-request disclosure.
+- Added research-data commit prevention in `.gitignore` and CI.
+- Added data-storage guidance.
+- Added `.lqmb` metadata and template/dependency framework.
+- Added living-project framework documentation.
+- Added template update protocol.
 
 ## 0.1.0
 
-Initial LQMB living research repository template.
+- Initial LQMB living research project template.

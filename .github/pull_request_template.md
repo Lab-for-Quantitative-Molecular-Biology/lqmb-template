@@ -33,4 +33,13 @@
 
 ### Human review
 
-<!-- Briefly state what was checked by a human before merge. -->
+<!-- Describe what was actually checked by a human before merge.
+Do not state or imply human approval that has not occurred. -->
+
+## Template / dependency updates
+
+- [ ] This PR changes the LQMB template framework
+- [ ] This PR updates a declared dependency
+- [ ] This PR does not change template/dependency provenance
+
+<!-- If applicable, state old and new versions/commits. -->

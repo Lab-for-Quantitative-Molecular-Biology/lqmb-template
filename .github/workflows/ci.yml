@@ -9,17 +9,18 @@ permissions:
 
 jobs:
   structure:
-    name: Validate LQMB structure and protected-file hygiene
+    name: Validate LQMB structure and metadata
     runs-on: ubuntu-latest
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Check required framework files
         shell: bash
         run: |
           set -euo pipefail
+
           required_files=(
             README.md
             CLAUDE.md
@@ -36,15 +37,28 @@ jobs:
             .lqmb/bin/template-status.py
             docs/lqmb/LQMB_LIVING_PROJECT_FRAMEWORK.md
             docs/lqmb/TEMPLATE_UPDATE_PROTOCOL.md
+            docs/lqmb/DEPENDENCY_UPDATE_PROTOCOL.md
             docs/lqmb/V0.2_MIGRATION_FROM_V0.1.md
           )
+
           for file in "${required_files[@]}"; do
-            test -f "$file" || { echo "Missing required file: $file"; exit 1; }
+            test -f "$file" || { echo "ERROR: missing required file: $file"; exit 1; }
           done
 
-          required_dirs=(src tests scripts workflows configs notebooks manuscript .github/ISSUE_TEMPLATE)
+          required_dirs=(
+            src
+            tests
+            scripts
+            workflows
+            configs
+            notebooks
+            manuscript
+            .github/ISSUE_TEMPLATE
+            .lqmb/bin
+          )
+
           for dir in "${required_dirs[@]}"; do
-            test -d "$dir" || { echo "Missing required directory: $dir"; exit 1; }
+            test -d "$dir" || { echo "ERROR: missing required directory: $dir"; exit 1; }
           done
 
       - name: Validate JSON metadata
@@ -55,23 +69,59 @@ jobs:
           python3 -m json.tool .lqmb/dependencies.json >/dev/null
           python3 -m json.tool .lqmb/manifest.json >/dev/null
 
-      - name: Check template version
+      - name: Validate template self metadata
         shell: bash
         run: |
           set -euo pipefail
-          test "$(tr -d '\r\n' < TEMPLATE_VERSION)" = "0.2.0"
+
+          test "$(tr -d '\r\n' < TEMPLATE_VERSION)" = "0.2.1"
+
           python3 - <<'PY'
           import json
-          data=json.load(open('.lqmb/manifest.json'))
-          assert data['template_version'] == '0.2.0'
-          print('Template version metadata is consistent.')
+          from pathlib import Path
+
+          project = json.loads(Path(".lqmb/project.json").read_text())
+          manifest = json.loads(Path(".lqmb/manifest.json").read_text())
+
+          assert project["project"]["type"] == "lqmb-template"
+          assert project["template"]["version"] == "self"
+          assert project["template"]["commit"] == "self"
+          assert project["template"]["sync_policy"] == "self"
+          assert project["release"]["version"] == "0.2.1"
+          assert manifest["template_version"] == "0.2.1"
+
+          managed = set(manifest["template_managed_paths"])
+          configured = set(manifest["project_configured_paths"])
+
+          assert ".lqmb/project.json" in configured
+          assert ".lqmb/dependencies.json" in configured
+          assert ".lqmb/manifest.json" in managed
+          assert ".lqmb/project.json" not in managed
+          assert ".lqmb/dependencies.json" not in managed
+
+          print("Template self metadata and manifest are consistent.")
           PY
+
+      - name: Check for tracked macOS metadata and archive artefacts
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          bad=$(git ls-files | grep -E '(^|/)(\.DS_Store|__MACOSX)(/|$)' || true)
+
+          if [ -n "$bad" ]; then
+            echo "ERROR: tracked macOS/archive artefacts detected:"
+            printf '%s\n' "$bad"
+            exit 1
+          fi
 
       - name: Check data directories contain no tracked research files
         shell: bash
         run: |
           set -euo pipefail
+
           tracked_data=$(git ls-files 'data/*' ':!data/README.md' ':!data/.gitkeep' || true)
+
           if [ -n "$tracked_data" ]; then
             echo "ERROR: tracked files found under data/ beyond documentation placeholders."
             printf '%s\n' "$tracked_data"
@@ -82,10 +132,18 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+
           if git grep -n -I -E 'AKIA[0-9A-Z]{16}|-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----|ghp_[A-Za-z0-9_]{30,}|github_pat_[A-Za-z0-9_]{20,}' -- . ':!AI_PROVENANCE.md'; then
             echo "ERROR: possible credential or private-key pattern detected."
             exit 1
           fi
+
+      - name: Validate template inspection tool
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 .lqmb/bin/template-status.py --json >/tmp/lqmb-template-status.json
+          python3 -m json.tool /tmp/lqmb-template-status.json >/dev/null
 
       - name: Check whitespace
         run: git diff --check
