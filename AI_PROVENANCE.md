@@ -37,7 +37,18 @@ After a human has actually reviewed the change, add:
 Human-Reviewer: <name>
 ```
 
-A `Human-Reviewer` trailer must never be added merely because Claude expects a human to review later.
+A `Human-Reviewer` trailer must never be added before the review has occurred.
+
+## Git trailer requirement
+
+The AI provenance fields must be Git trailers at the end of the commit message.
+They should be detectable with:
+
+```bash
+git show -s --format='%(trailers:unfold)' HEAD
+```
+
+Do not place the provenance fields only in the prose/body of the commit message.
 
 ## Pull requests
 

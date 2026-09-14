@@ -1,19 +1,55 @@
 # LQMB Template Update Protocol
 
-This is the standard procedure for proposing an update of a living LQMB project to a newer template release.
+## Purpose
 
-## Before starting
+`lqmb-template` is a living upstream project. Downstream LQMB projects do not
+silently synchronize to it. Instead, they declare the exact template release
+and commit they adopted, detect later upstream releases, and propose updates
+through ordinary version-controlled project changes.
 
-1. Confirm the project contains `.lqmb/project.json` and `.lqmb/manifest.json`.
-2. Read the recorded template version and commit.
-3. Check the canonical `lqmb-template` repository for the latest release.
-4. Check GitHub for an existing open template-update PR for the same target release.
+## Canonical relationship
 
-## If an existing update PR exists
+A downstream project records:
 
-Do not create another branch for the same update. Review, comment on or contribute to the existing PR.
+```json
+"template": {
+  "repository": "https://github.com/Lab-for-Quantitative-Molecular-Biology/lqmb-template",
+  "version": "0.2.0",
+  "commit": "<immutable commit>",
+  "sync_policy": "prompt"
+}
+```
 
-## If no update PR exists
+The template repository itself is special and records `version: "self"` and
+`commit: "self"`.
+
+## First-interaction check
+
+At the first substantive interaction with a project:
+
+1. Read `.lqmb/project.json`, `.lqmb/dependencies.json`, and `.lqmb/manifest.json`.
+2. Run:
+   ```bash
+   python3 .lqmb/bin/template-status.py --check-upstream
+   ```
+3. If the upstream query succeeds, compare the recorded release to the latest
+   released `vX.Y.Z` tag.
+4. If upstream cannot be queried, state that explicitly and do not infer that
+   the project is current from local metadata alone.
+5. If an update is available, inform the human user. Do not modify files automatically.
+
+## Avoiding duplicate update work
+
+Before creating an update branch:
+
+1. Check GitHub for an existing open pull request that updates this project to
+   the same target template release.
+2. If one exists, do not create a duplicate branch. Review or contribute to
+   the existing PR instead.
+3. If repository access is unavailable, state that duplicate checking could
+   not be performed rather than assuming no update exists.
+
+## Preparing an update
 
 Create:
 
@@ -21,27 +57,57 @@ Create:
 chore/lqmb-template-vX.Y.Z
 ```
 
-Then:
+Then obtain both the project's recorded template snapshot and the target
+template snapshot.
 
-1. Obtain the original template version recorded by the project.
-2. Obtain the target template version.
-3. Read the target template's `.lqmb/manifest.json`.
-4. Compare only template-managed paths.
-5. Never overwrite protected paths.
-6. For a managed file changed upstream but not locally, adopt the upstream file.
-7. For a managed file changed locally but not upstream, preserve the project file.
-8. For a managed file changed both locally and upstream, stop and request human resolution.
-9. Update `.lqmb/project.json` to the new template version and exact commit.
-10. Record the update in `CHANGELOG.md` or `docs/decisions.md`.
-11. Run the project's normal validation.
-12. Review `git diff` and `git status`.
-13. Open a pull request describing the old and new template versions, files affected, conflicts resolved and validation performed.
-14. Merge only after human review.
+The update is a three-way comparison:
 
-## Important safety rule
+- **Base:** the exact template commit recorded by the project.
+- **Target:** the new template release.
+- **Project:** the files currently present in the living project.
 
-Never copy the complete template repository over a living project. Template updates are selective and manifest-driven.
+## Path classes
 
-## Historical provenance
+`.lqmb/manifest.json` defines four classes.
 
-The project must retain the exact template version/commit used before and after an update through ordinary Git history and the project metadata file.
+### template_managed_paths
+
+These are maintained by the upstream template.
+
+### project_configured_paths
+
+These use the template's structure but contain project-specific values.
+
+They must be preserved and updated deliberately, not overwritten wholesale.
+
+### protected_paths
+
+These are project-owned and must never be overwritten by template updates.
+
+### shared_paths
+
+These require explicit human resolution when both upstream and project have
+changed.
+
+## Three-way update rule
+
+For every template-managed file:
+
+- Project == Base and Target != Base → adopt Target.
+- Project != Base and Target == Base → preserve Project.
+- Project == Base and Target == Base → no change.
+- Project != Base and Target != Base → human review is required.
+
+Never copy the entire template repository over a living project.
+
+## After updating
+
+1. Update the project's recorded template version and exact target commit.
+2. Run project validation.
+3. Review `git diff` and `git status`.
+4. Confirm no project data, results, code or protected files were overwritten.
+5. Record the update in the changelog or project decisions.
+6. Open a pull request.
+7. Human review is required before merge.
+
+The update is therefore itself a living, version-controlled project contribution.
