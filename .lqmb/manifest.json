@@ -1,6 +1,6 @@
 {
   "schema_version": "0.2",
-  "template_version": "0.2.1",
+  "template_version": "0.2.2",
   "template_managed_paths": [
     "CLAUDE.md",
     "AI_PROVENANCE.md",

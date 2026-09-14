@@ -74,33 +74,15 @@ jobs:
         run: |
           set -euo pipefail
 
-          test "$(tr -d '\r\n' < TEMPLATE_VERSION)" = "0.2.1"
+          test "$(tr -d '\r\n' < TEMPLATE_VERSION)" = "0.2.2"
 
-          python3 - <<'PY'
-          import json
-          from pathlib import Path
+          python3 .lqmb/bin/validate_metadata.py
 
-          project = json.loads(Path(".lqmb/project.json").read_text())
-          manifest = json.loads(Path(".lqmb/manifest.json").read_text())
-
-          assert project["project"]["type"] == "lqmb-template"
-          assert project["template"]["version"] == "self"
-          assert project["template"]["commit"] == "self"
-          assert project["template"]["sync_policy"] == "self"
-          assert project["release"]["version"] == "0.2.1"
-          assert manifest["template_version"] == "0.2.1"
-
-          managed = set(manifest["template_managed_paths"])
-          configured = set(manifest["project_configured_paths"])
-
-          assert ".lqmb/project.json" in configured
-          assert ".lqmb/dependencies.json" in configured
-          assert ".lqmb/manifest.json" in managed
-          assert ".lqmb/project.json" not in managed
-          assert ".lqmb/dependencies.json" not in managed
-
-          print("Template self metadata and manifest are consistent.")
-          PY
+      - name: Run LQMB metadata validation regression tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m unittest tests/test_validate_metadata.py -v
 
       - name: Check for tracked macOS metadata and archive artefacts
         shell: bash
