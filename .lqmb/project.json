@@ -11,7 +11,7 @@
     "sync_policy": "self"
   },
   "release": {
-    "version": "0.2.3"
+    "version": "0.2.4"
   },
   "dependencies_file": ".lqmb/dependencies.json"
 }
