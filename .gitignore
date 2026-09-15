@@ -57,6 +57,18 @@ outputs/*
 *.parquet
 
 # ----------------------------------------------------------------
+# Example datasets
+# ----------------------------------------------------------------
+# Small, non-sensitive fixtures for tests and demonstrations are
+# tracked deliberately. See CLAUDE.md and data/README.md.
+#
+# Placement matters: this negation follows the scientific-format
+# patterns above, so it re-includes them under examples/. It
+# precedes the secrets, log, OS and cache patterns below, so those
+# still apply inside examples/ (last matching pattern wins).
+!examples/**
+
+# ----------------------------------------------------------------
 # Secrets / local configuration
 # ----------------------------------------------------------------
 .env
