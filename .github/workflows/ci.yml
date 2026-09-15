@@ -75,7 +75,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          test "$(tr -d '\r\n' < TEMPLATE_VERSION)" = "0.2.3"
+          test "$(tr -d '\r\n' < TEMPLATE_VERSION)" = "0.2.4"
 
           python3 .lqmb/bin/validate_metadata.py
 
