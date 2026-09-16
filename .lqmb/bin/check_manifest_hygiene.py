@@ -11,14 +11,25 @@ this script checks the properties it depends on:
 - the four classes are pairwise disjoint (no path, and no directory/file
   pair, is claimed by more than one class);
 - every tracked file in the repository is covered by exactly one class;
-- no template-managed YAML workflow appears to run a script that lives
-  under a protected path.
+- no template-managed file appears to run a script that lives under a
+  protected path.
 
 The last check is a best-effort static scan, not a proof: it is aimed
 squarely at the class of defect fixed in template v0.2.3, where
 .github/workflows/ci.yml (template-managed, shipped verbatim to every
 downstream project) invoked a test file under tests/ (protected,
 project-owned) that a downstream project would never have been given.
+It scans .yml/.yaml/.py/.sh files under template_managed_paths, with
+comments and Python docstrings stripped first to reduce false positives
+from prose that merely discusses such a path rather than running it. It
+deliberately excludes .lqmb/tests/: that directory's own purpose is to
+exercise this detection logic, so it legitimately contains crafted
+"bad" example strings as test fixtures, not real invocations. The
+regex matches embedded shell-command text (e.g. a YAML `run:` block, or
+a Python script using os.system/subprocess with a literal command
+string), not Python's list-argument subprocess form
+(subprocess.run(["python3", path])), which is a real gap in this
+heuristic, not something it claims to cover.
 
 This file is itself a template-managed path (.lqmb/bin/) shipped verbatim
 to every downstream project, so it must not assume anything about the
@@ -42,8 +53,32 @@ PATH_CLASSES = (
 )
 
 # Matches `python3 <path>` / `bash <path>` / `sh <path>` / `source <path>`
-# invocations inside a YAML workflow's `run:` script blocks.
+# invocations, e.g. inside a YAML workflow's `run:` script blocks or a
+# Python script's own subprocess calls written as plain shell text.
 SCRIPT_EXEC_RE = re.compile(r"\b(?:python3?|bash|sh|source)\s+([\w.][\w./-]*\.(?:py|sh))\b")
+
+# File types scanned by check_no_managed_file_references_a_protected_path.
+SCANNED_SUFFIXES = {".yml", ".yaml", ".py", ".sh"}
+
+# template_managed_paths entries excluded from that scan: this directory's
+# purpose is to test the detection logic itself, so its fixtures legitimately
+# contain example "bad" invocation strings that are not real invocations.
+SCAN_EXCLUDED_PREFIXES = (".lqmb/tests/",)
+
+_PY_DOCSTRING_RE = re.compile(r'("""|\'\'\')(?:(?!\1).)*?\1', re.DOTALL)
+
+
+def _strip_comments_and_docstrings(text: str, suffix: str) -> str:
+    """Best-effort removal of prose before scanning for real invocations.
+
+    This is a heuristic, not a parser: a '#' or a triple-quote inside an
+    unrelated string literal can still confuse it. Good enough to keep this
+    checker's own explanatory docstrings from self-triggering.
+    """
+
+    if suffix == ".py":
+        text = _PY_DOCSTRING_RE.sub("", text)
+    return "\n".join(line.split("#", 1)[0] for line in text.splitlines())
 
 
 def declared_paths(manifest: dict) -> list[tuple[str, str]]:
@@ -121,20 +156,25 @@ def _files_under(manifest_path: str, tracked_files: list[str]) -> list[str]:
     return [manifest_path] if manifest_path in tracked_files else []
 
 
-def check_no_managed_workflow_executes_a_protected_path(
+def check_no_managed_file_references_a_protected_path(
     manifest: dict, tracked_files: list[str], root: Path
 ) -> list[str]:
     protected_entries = manifest.get("protected_paths", [])
     errors: list[str] = []
 
     for managed_entry in manifest.get("template_managed_paths", []):
+        if managed_entry.startswith(SCAN_EXCLUDED_PREFIXES):
+            continue
         for file_path in _files_under(managed_entry, tracked_files):
-            if Path(file_path).suffix not in {".yml", ".yaml"}:
+            if file_path.startswith(SCAN_EXCLUDED_PREFIXES):
+                continue
+            suffix = Path(file_path).suffix
+            if suffix not in SCANNED_SUFFIXES:
                 continue
             full_path = root / file_path
             if not full_path.is_file():
                 continue
-            text = full_path.read_text()
+            text = _strip_comments_and_docstrings(full_path.read_text(), suffix)
             for match in SCRIPT_EXEC_RE.finditer(text):
                 referenced = match.group(1)
                 if referenced.startswith("./"):
@@ -145,7 +185,7 @@ def check_no_managed_workflow_executes_a_protected_path(
                             f"{file_path!r} (template_managed_paths) appears to "
                             f"run {referenced!r}, which falls under the "
                             f"protected path {protected_entry!r}; a downstream "
-                            "project's copy of this workflow would reference "
+                            "project's copy of this file would reference "
                             "content it was never given"
                         )
     return errors
@@ -166,7 +206,7 @@ def main() -> int:
     errors += check_paths_exist(manifest, ROOT)
     errors += check_classes_disjoint(manifest)
     errors += check_full_coverage(manifest, tracked_files)
-    errors += check_no_managed_workflow_executes_a_protected_path(manifest, tracked_files, ROOT)
+    errors += check_no_managed_file_references_a_protected_path(manifest, tracked_files, ROOT)
 
     if errors:
         print("Manifest hygiene check failed:")
@@ -177,7 +217,7 @@ def main() -> int:
     print(
         "Manifest hygiene checks passed: declared paths exist, path classes "
         "are disjoint, every tracked file is classified exactly once, and no "
-        "template-managed workflow appears to run a protected-path script."
+        "template-managed file appears to run a protected-path script."
     )
     return 0
 
