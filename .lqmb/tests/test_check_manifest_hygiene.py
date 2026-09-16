@@ -1,9 +1,10 @@
 """Regression tests for .lqmb/bin/check_manifest_hygiene.py.
 
 Exercises the pure classification/comparison functions against synthetic
-manifests and file lists, plus one regression case reproducing the exact
-v0.2.3 defect: a template-managed workflow running a test file that
-actually lives under a protected path.
+manifests and file lists, plus regression cases for the exact v0.2.3
+defect (a template-managed file running a test file that actually lives
+under a protected path) and for two bugs the tests themselves originally
+caught while widening that scan from YAML-only to .py/.sh as well.
 """
 from __future__ import annotations
 
@@ -25,8 +26,8 @@ spec.loader.exec_module(check_manifest_hygiene)
 check_paths_exist = check_manifest_hygiene.check_paths_exist
 check_classes_disjoint = check_manifest_hygiene.check_classes_disjoint
 check_full_coverage = check_manifest_hygiene.check_full_coverage
-check_no_managed_workflow_executes_a_protected_path = (
-    check_manifest_hygiene.check_no_managed_workflow_executes_a_protected_path
+check_no_managed_file_references_a_protected_path = (
+    check_manifest_hygiene.check_no_managed_file_references_a_protected_path
 )
 
 
@@ -110,7 +111,7 @@ class CheckFullCoverageTests(unittest.TestCase):
         self.assertTrue(any("multiple path classes" in e for e in errors))
 
 
-class CheckNoManagedWorkflowExecutesAProtectedPathTests(unittest.TestCase):
+class CheckNoManagedFileReferencesAProtectedPathTests(unittest.TestCase):
     def test_passes_when_workflow_only_runs_managed_scripts(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -120,7 +121,7 @@ class CheckNoManagedWorkflowExecutesAProtectedPathTests(unittest.TestCase):
             )
             tracked = [".github/workflows/ci.yml"]
 
-            errors = check_no_managed_workflow_executes_a_protected_path(
+            errors = check_no_managed_file_references_a_protected_path(
                 sample_manifest(), tracked, root
             )
             self.assertEqual(errors, [])
@@ -141,7 +142,7 @@ class CheckNoManagedWorkflowExecutesAProtectedPathTests(unittest.TestCase):
             tracked = [".github/workflows/ci.yml"]
             manifest = sample_manifest(protected_paths=["lqmb/", "README.md"])
 
-            errors = check_no_managed_workflow_executes_a_protected_path(
+            errors = check_no_managed_file_references_a_protected_path(
                 manifest, tracked, root
             )
             self.assertEqual(errors, [])
@@ -155,7 +156,7 @@ class CheckNoManagedWorkflowExecutesAProtectedPathTests(unittest.TestCase):
             )
             tracked = [".github/workflows/ci.yml"]
 
-            errors = check_no_managed_workflow_executes_a_protected_path(
+            errors = check_no_managed_file_references_a_protected_path(
                 sample_manifest(), tracked, root
             )
             self.assertTrue(errors)
@@ -178,16 +179,18 @@ class CheckNoManagedWorkflowExecutesAProtectedPathTests(unittest.TestCase):
             )
             tracked = [".github/workflows/ci.yml"]
 
-            errors = check_no_managed_workflow_executes_a_protected_path(
+            errors = check_no_managed_file_references_a_protected_path(
                 sample_manifest(), tracked, root
             )
             self.assertTrue(errors)
             self.assertIn("tests/test_validate_metadata.py", errors[0])
 
     def test_does_not_flag_the_check_manifest_hygiene_module_itself(self) -> None:
-        """check_manifest_hygiene.py only scans .yml/.yaml files, so its own
-        source (which discusses the v0.2.3 bug in its docstring) is never
-        scanned and cannot self-trigger a false positive.
+        """The scan now covers .py files too, so check_manifest_hygiene.py's
+        own source (under .lqmb/bin/, not excluded like .lqmb/tests/) is
+        actually scanned here -- this is a real self-check, not a vacuous
+        one: its docstring discusses the v0.2.3 bug in prose only, with no
+        literal `python3 <protected-path>` invocation text, so it passes.
         """
 
         with tempfile.TemporaryDirectory() as tmp:
@@ -198,8 +201,87 @@ class CheckNoManagedWorkflowExecutesAProtectedPathTests(unittest.TestCase):
             )
             tracked = [".lqmb/bin/check_manifest_hygiene.py"]
 
-            errors = check_no_managed_workflow_executes_a_protected_path(
+            errors = check_no_managed_file_references_a_protected_path(
                 sample_manifest(), tracked, root
+            )
+            self.assertEqual(errors, [])
+
+    def test_flags_defect_in_a_managed_python_script_too(self) -> None:
+        """The scan is no longer YAML-only: a template-managed .py script
+        that shells out to a protected-path file via a literal command
+        string (e.g. os.system, or subprocess with shell=True) must be
+        caught as well. The regex matches embedded shell-command text, not
+        Python's list-argument subprocess form -- see docstring note on the
+        scan being a best-effort heuristic, not a full parser.
+        """
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / ".lqmb/bin").mkdir(parents=True)
+            (root / ".lqmb/bin/helper.py").write_text(
+                "import os\n"
+                'os.system("python3 tests/test_validate_metadata.py")\n'
+            )
+            tracked = [".lqmb/bin/helper.py"]
+            manifest = sample_manifest(template_managed_paths=[".lqmb/bin/"])
+
+            errors = check_no_managed_file_references_a_protected_path(
+                manifest, tracked, root
+            )
+            self.assertTrue(errors)
+            self.assertIn("tests/test_validate_metadata.py", errors[0])
+
+    def test_excludes_lqmb_tests_directory_even_with_matching_suffix(self) -> None:
+        """.lqmb/tests/ is declared template-managed and its fixtures
+        legitimately contain example 'bad' invocation strings as plain data
+        (see this very test suite) -- it must be excluded from the scan
+        entirely, not merely rely on comment/docstring stripping, since
+        those strings are ordinary string literals, not comments.
+        """
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / ".lqmb/tests").mkdir(parents=True)
+            (root / ".lqmb/tests/test_fixture_example.py").write_text(
+                'BAD_EXAMPLE = "run: |\\n  python3 tests/test_validate_metadata.py -v\\n"\n'
+            )
+            tracked = [".lqmb/tests/test_fixture_example.py"]
+            manifest = sample_manifest(template_managed_paths=[".lqmb/tests/"])
+
+            errors = check_no_managed_file_references_a_protected_path(
+                manifest, tracked, root
+            )
+            self.assertEqual(errors, [])
+
+    def test_ignores_a_bad_invocation_written_only_in_a_comment(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / ".github/workflows").mkdir(parents=True)
+            (root / ".github/workflows/ci.yml").write_text(
+                "run: |\n"
+                "  # do not do this: python3 tests/test_validate_metadata.py\n"
+                "  python3 .lqmb/bin/validate_metadata.py\n"
+            )
+            tracked = [".github/workflows/ci.yml"]
+
+            errors = check_no_managed_file_references_a_protected_path(
+                sample_manifest(), tracked, root
+            )
+            self.assertEqual(errors, [])
+
+    def test_ignores_a_bad_invocation_written_only_in_a_python_docstring(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / ".lqmb/bin").mkdir(parents=True)
+            (root / ".lqmb/bin/helper.py").write_text(
+                '"""Explains why we no longer run python3 tests/foo.py here."""\n'
+                "print('nothing protected referenced')\n"
+            )
+            tracked = [".lqmb/bin/helper.py"]
+            manifest = sample_manifest(template_managed_paths=[".lqmb/bin/"])
+
+            errors = check_no_managed_file_references_a_protected_path(
+                manifest, tracked, root
             )
             self.assertEqual(errors, [])
 
@@ -220,7 +302,7 @@ class LiveRepositoryTests(unittest.TestCase):
         errors += check_paths_exist(manifest, ROOT)
         errors += check_classes_disjoint(manifest)
         errors += check_full_coverage(manifest, tracked)
-        errors += check_no_managed_workflow_executes_a_protected_path(manifest, tracked, ROOT)
+        errors += check_no_managed_file_references_a_protected_path(manifest, tracked, ROOT)
 
         self.assertEqual(errors, [], msg="\n".join(errors))
 
