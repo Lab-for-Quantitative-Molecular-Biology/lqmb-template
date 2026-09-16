@@ -41,6 +41,7 @@ jobs:
             .lqmb/bin/template-status.py
             .lqmb/tests/test_validate_metadata.py
             .lqmb/tests/test_check_ai_provenance.py
+            .lqmb/tests/test_check_manifest_hygiene.py
             docs/lqmb/LQMB_LIVING_PROJECT_FRAMEWORK.md
             docs/lqmb/TEMPLATE_UPDATE_PROTOCOL.md
             docs/lqmb/DEPENDENCY_UPDATE_PROTOCOL.md
@@ -126,6 +127,18 @@ jobs:
           fi
 
           python3 .lqmb/bin/check_ai_provenance.py --base "$base" --head "$head"
+
+      - name: Run manifest hygiene regression tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 .lqmb/tests/test_check_manifest_hygiene.py -v
+
+      - name: Check manifest hygiene
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 .lqmb/bin/check_manifest_hygiene.py
 
       - name: Check for tracked macOS metadata and archive artefacts
         shell: bash
