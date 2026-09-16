@@ -75,7 +75,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          test "$(tr -d '\r\n' < TEMPLATE_VERSION)" = "0.2.3"
+          test "$(tr -d '\r\n' < TEMPLATE_VERSION)" = "0.2.4"
 
           python3 .lqmb/bin/validate_metadata.py
 
@@ -109,6 +109,32 @@ jobs:
             echo "ERROR: tracked files found under data/ beyond documentation placeholders."
             printf '%s\n' "$tracked_data"
             exit 1
+          fi
+
+      - name: Check example dataset sizes
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # examples/ is a protected (project-owned) path in .lqmb/manifest.json
+          # while this workflow is template-managed, so an oversized fixture is
+          # reported as a warning and must never fail a downstream project's CI.
+          limit_bytes=1048576
+          oversized=""
+
+          while IFS= read -r file; do
+            [ -f "$file" ] || continue
+            size=$(wc -c <"$file" | tr -d ' ')
+            if [ "$size" -gt "$limit_bytes" ]; then
+              oversized="${oversized}  ${file} (${size} bytes)"$'\n'
+            fi
+          done < <(git ls-files examples/)
+
+          if [ -n "$oversized" ]; then
+            echo "::warning::Files under examples/ exceed the ${limit_bytes}-byte guideline for small demonstration fixtures."
+            printf '%s' "$oversized"
+          else
+            echo "examples/: no files above the ${limit_bytes}-byte guideline."
           fi
 
       - name: Check for common credential patterns

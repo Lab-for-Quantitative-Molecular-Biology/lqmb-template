@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.2.4 — patch release
+
+### Fixed
+
+- `examples/` was unusable for its documented purpose. `CLAUDE.md` and `data/README.md` both direct contributors to keep small, non-sensitive example datasets in `examples/`, but the scientific-format patterns in the template-managed `.gitignore` are unanchored and therefore match at every depth. `examples/mini.bam`, `examples/demo.vcf`, `examples/demo.h5ad`, `examples/demo.parquet` and similar fixtures were silently ignored: `git add` succeeded with no output, CI passed, and the fixture was absent from the repository, surfacing only on another contributor's clone. `.csv` and `.tsv` were unaffected, so the failure appeared intermittent and depended on the fixture's file type.
+- Added a `!examples/**` negation to `.gitignore`, positioned after the scientific-format block and before the secrets, log, OS and cache patterns. Git applies the last matching pattern, so data formats are now trackable under `examples/` while `examples/.DS_Store`, `examples/secrets.json`, `examples/*.key`, `examples/.env`, `examples/*.log` and `examples/__pycache__/` remain ignored. A negation placed at the end of the file would instead have re-included `.DS_Store` and tripped the existing tracked-artefact check. Protection of `data/`, `outputs/` and the repository root is unchanged.
+
+### CI
+
+- Added a "Check example dataset sizes" step, warning when a tracked file under `examples/` exceeds 1 MiB. This restores a deliberate size limit in place of the accidental one the ignore patterns previously provided. The step emits a GitHub warning and exits 0 rather than failing, because `examples/` is a `protected_path` while `.github/workflows/ci.yml` is a `template_managed_path`; a hard failure would repeat the managed-versus-protected defect fixed in v0.2.2 and v0.2.3.
+- `.github/workflows/ci.yml`'s "Validate template self metadata" step now checks `TEMPLATE_VERSION` against `0.2.4`.
+
 ## 0.2.3 — patch release
 
 ### Fixed
