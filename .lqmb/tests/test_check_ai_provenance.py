@@ -9,7 +9,10 @@ read only the last paragraph as trailers.
 """
 from __future__ import annotations
 
+import contextlib
 import importlib.util
+import io
+import os
 import subprocess
 import sys
 import tempfile
@@ -27,6 +30,8 @@ spec.loader.exec_module(check_ai_provenance)
 
 commits_in_range = check_ai_provenance.commits_in_range
 check_commit = check_ai_provenance.check_commit
+parent_count = check_ai_provenance.parent_count
+requires_trailer = check_ai_provenance.requires_trailer
 
 
 class GitRepoTestCase(unittest.TestCase):
@@ -54,6 +59,15 @@ class GitRepoTestCase(unittest.TestCase):
 
     def _base(self) -> str:
         return self._commit("base commit\n\nAI-Assisted: None")
+
+    def _commit_to(self, filename: str, message: str) -> str:
+        """Like ``_commit`` but writes ``filename`` instead of the shared
+        ``file.txt``, so commits on diverging branches don't conflict."""
+
+        (self.repo / filename).write_text(message)
+        self._git("add", filename)
+        self._git("commit", "-q", "-m", message)
+        return self._git("rev-parse", "HEAD").strip()
 
 
 class WellFormedTrailerTests(GitRepoTestCase):
@@ -150,6 +164,87 @@ class CommitRangeTests(GitRepoTestCase):
         second = self._commit("second\n\nAI-Assisted: None")
 
         self.assertEqual(commits_in_range(base, second, cwd=self.repo), [first, second])
+
+
+class MergeCommitExemptionTests(GitRepoTestCase):
+    """A real 'Create a merge commit' merge produces a trailer-less commit
+    authored by the platform, not a contributor, and must not be required to
+    carry an AI-Assisted/AI-Role trailer -- see the module docstring."""
+
+    def _merge_feature_branch_into_main(self) -> tuple[str, str]:
+        """Return (non_ff_merge_commit, feature_commit)."""
+
+        base = self._base()
+        self._git("checkout", "-q", "-b", "feature")
+        feature_commit = self._commit_to(
+            "feature.txt", "feature work\n\nAI-Assisted: Claude\nAI-Role: Generated"
+        )
+        self._git("checkout", "-q", "main")
+        self._commit_to("main.txt", "unrelated main work\n\nAI-Assisted: None")
+        self._git("merge", "-q", "--no-ff", "-m", "Merge branch 'feature'", "feature")
+        merge_commit = self._git("rev-parse", "HEAD").strip()
+        return merge_commit, feature_commit
+
+    def test_merge_commit_has_more_than_one_parent(self) -> None:
+        merge_commit, _ = self._merge_feature_branch_into_main()
+
+        self.assertGreater(parent_count(merge_commit, cwd=self.repo), 1)
+        self.assertFalse(requires_trailer(merge_commit, cwd=self.repo))
+
+    def test_non_merge_commit_still_requires_trailer(self) -> None:
+        base = self._base()
+        head = self._commit("a change with no provenance trailer at all")
+
+        self.assertEqual(parent_count(head, cwd=self.repo), 1)
+        self.assertTrue(requires_trailer(head, cwd=self.repo))
+
+    def test_main_passes_when_only_the_merge_commit_lacks_a_trailer(self) -> None:
+        """Reproduces the exact v0.2.4 CI defect: every authored commit in the
+        range is well-formed, but the range also contains a trailer-less
+        merge commit GitHub generated. main() must not fail because of it."""
+
+        base = self._commit("root\n\nAI-Assisted: None")
+        merge_commit, _ = self._merge_feature_branch_into_main()
+
+        stdout = io.StringIO()
+        cwd = os.getcwd()
+        os.chdir(self.repo)
+        try:
+            with contextlib.redirect_stdout(stdout):
+                exit_code = check_ai_provenance.main(
+                    ["--base", base, "--head", merge_commit]
+                )
+        finally:
+            os.chdir(cwd)
+
+        self.assertEqual(exit_code, 0)
+        self.assertIn("SKIP", stdout.getvalue())
+        self.assertNotIn("ERROR", stdout.getvalue())
+
+    def test_main_still_fails_on_a_malformed_non_merge_commit_in_the_range(
+        self,
+    ) -> None:
+        base = self._base()
+        self._git("checkout", "-q", "-b", "feature")
+        self._commit_to("feature.txt", "feature work with no trailer")
+        self._git("checkout", "-q", "main")
+        self._commit_to("main.txt", "unrelated main work\n\nAI-Assisted: None")
+        self._git("merge", "-q", "--no-ff", "-m", "Merge branch 'feature'", "feature")
+        merge_commit = self._git("rev-parse", "HEAD").strip()
+
+        stdout = io.StringIO()
+        cwd = os.getcwd()
+        os.chdir(self.repo)
+        try:
+            with contextlib.redirect_stdout(stdout):
+                exit_code = check_ai_provenance.main(
+                    ["--base", base, "--head", merge_commit]
+                )
+        finally:
+            os.chdir(cwd)
+
+        self.assertEqual(exit_code, 1)
+        self.assertIn("ERROR", stdout.getvalue())
 
 
 if __name__ == "__main__":

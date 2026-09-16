@@ -12,6 +12,15 @@ is read back as body prose instead. This script is a template-managed path
 shipped verbatim to every downstream project, so it must not assume
 anything about that project's own commit history beyond the base/head range
 it is given.
+
+Merge commits are exempt from the trailer requirement. A "Create a merge
+commit" merge (the strategy CLAUDE.md mandates) produces a commit authored
+by GitHub itself, not by a contributor, and it carries no diff of its own
+beyond the merge -- there is nothing to attribute. Without this exemption,
+a push event's before/after range includes the very merge commit GitHub
+just created, so a PR that reports all-OK on every one of its own commits
+can still fail once merged, purely because the auto-generated merge commit
+has no trailer of its own.
 """
 from __future__ import annotations
 
@@ -38,6 +47,23 @@ def commits_in_range(base: str, head: str, cwd: Path | None = None) -> list[str]
 
     out = _run_git(["rev-list", "--reverse", f"{base}..{head}"], cwd=cwd)
     return [line for line in out.splitlines() if line]
+
+
+def parent_count(commit: str, cwd: Path | None = None) -> int:
+    """Return how many parents ``commit`` has (0 for a root commit)."""
+
+    out = _run_git(["show", "-s", "--format=%P", commit], cwd=cwd).strip()
+    return len(out.split()) if out else 0
+
+
+def requires_trailer(commit: str, cwd: Path | None = None) -> bool:
+    """Return whether ``commit`` must carry an AI provenance trailer.
+
+    Merge commits (more than one parent) are exempt -- see the module
+    docstring.
+    """
+
+    return parent_count(commit, cwd=cwd) <= 1
 
 
 def trailers_for(commit: str, cwd: Path | None = None) -> dict[str, list[str]]:
@@ -106,9 +132,14 @@ def main(argv: list[str] | None = None) -> int:
 
     failed = False
     for commit in commits:
-        errors = check_commit(commit)
         subject = _run_git(["show", "-s", "--format=%s", commit]).strip()
         short = commit[:12]
+
+        if not requires_trailer(commit):
+            print(f"SKIP: {short} {subject!r} (merge commit; no trailer required)")
+            continue
+
+        errors = check_commit(commit)
         if errors:
             failed = True
             print(f"ERROR: {short} {subject!r}")
