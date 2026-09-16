@@ -50,14 +50,6 @@ git show -s --format='%(trailers:unfold)' HEAD
 
 Do not place the provenance fields only in the prose/body of the commit message.
 
-### Merge commits are exempt
-
-A merge commit created by GitHub's "Create a merge commit" merge (the
-strategy this framework's Git workflow uses) is authored by the platform,
-not by a contributor, and carries no diff of its own beyond the merge --
-there is nothing to attribute. `check_ai_provenance.py` does not require a
-trailer on any commit with more than one parent.
-
 ## Pull requests
 
 Pull requests should state:
