@@ -1,6 +1,6 @@
 {
   "schema_version": "0.2",
-  "template_version": "0.2.3",
+  "template_version": "0.2.4",
   "template_managed_paths": [
     "CLAUDE.md",
     "AI_PROVENANCE.md",
@@ -38,7 +38,9 @@
     "docs/methods.md",
     "docs/literature.md",
     "docs/contributions.md",
-    "README.md"
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
   ],
   "shared_paths": []
 }
